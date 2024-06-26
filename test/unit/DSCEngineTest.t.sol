@@ -162,8 +162,7 @@ contract DSCEngineTest is Test {
             AMOUNT_COLLATERAL * uint256(ethPrice) * engine.getAdditionnalFeedPrecision() / engine.getPrecision();
 
         (, uint256 collateralValueInUsd) = engine.getAccountInformation(USER);
-        uint256 collateralAdjustedForTreshold = (collateralValueInUsd * 50) / 100;
-        uint256 expectedHealthFactor = (collateralAdjustedForTreshold * engine.getPrecision() / amountDscMinted);
+        uint256 expectedHealthFactor = engine.calculateHealthFactor(amountDscMinted, collateralValueInUsd);
 
         vm.prank(USER);
         vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__BreaksHealthFactor.selector, expectedHealthFactor));

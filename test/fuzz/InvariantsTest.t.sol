@@ -38,11 +38,35 @@ contract Invariants is StdInvariant, Test {
         uint256 wethValue = engine.getUsdValue(weth, totalWethDeposited);
         uint256 wbtcValue = engine.getUsdValue(wbtc, totalWbtcDeposited);
 
-        console.log("Weth total deposited", totalWethDeposited);
-        console.log("Wbtc total deposited", totalWbtcDeposited);
-        console.log("Total supply of DSC", totalSupply);
-        console.log("Time mint is called %s", handler.timeMintIsCalled());
+        // console.log("Weth total deposited", totalWethDeposited);
+        // console.log("Wbtc total deposited", totalWbtcDeposited);
+        // console.log("Total supply of DSC", totalSupply);
+        // console.log("WETH Value: %s", wethValue);
+        // console.log("WBTC Value: %s", wbtcValue);
+
+        // console.log("Statistiques");
+        // console.log("mintAndDepositCollateral called:", handler.mintAndDepositCollateralNumberOfCall());
+        // console.log("redeemCollateral called:", handler.redeemCollateralNumberOfCall());
+        // console.log("mintDSC called:", handler.mintDSCNumberOfCall());
+        // console.log("burnDSC called:", handler.burnDSCNumberOfCall());
+        // console.log(
+        //     "Total Call:",
+        //     handler.burnDSCNumberOfCall() + handler.mintDSCNumberOfCall()
+        //         + handler.mintAndDepositCollateralNumberOfCall() + handler.redeemCollateralNumberOfCall()
+        // );
+
+        // console.log("Users who minted DSC: ", handler.getUserWhoMintedDSCLength());
 
         assert(wethValue + wbtcValue >= totalSupply);
+    }
+
+    function invariant_gettersShouldNotRevert() public view {
+        engine.getAdditionnalFeedPrecision();
+        engine.getCollateralTokens();
+        engine.getLiquidationBonus();
+        engine.getLiquidationTreshold();
+        engine.getPrecision();
+        engine.getLiquidationPrecision();
+        engine.getMinHealthFactor();
     }
 }
