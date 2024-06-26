@@ -100,7 +100,7 @@ contract Handler is Test {
         if (usersWhoMintedDSC.length == 0) return;
         address user = usersWhoMintedDSC[seedIndexUserWhoMinted % usersWhoMintedDSC.length];
 
-        amountToBurn = bound(amountToBurn, 0, engine.getTotalMinted(user));
+        amountToBurn = bound(amountToBurn, 0, engine.getDSCBalance(user));
         if (amountToBurn == 0) return;
 
         vm.startPrank(user);
@@ -110,38 +110,47 @@ contract Handler is Test {
     }
 
     function liquidate(address userToLiquidate, uint256 collateralSeed, uint256 debtToCover) public {
-        ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
-        ERC20Mock collateral2 = _getCollateralFromSeed(collateralSeed + 1);
+        ERC20Mock depositedCollateral = _getCollateralFromSeed(collateralSeed);
+        ERC20Mock collateralToLiquidate = depositedCollateral;
+        (, int256 price,,,) =
+            MockV3Aggregator(engine.getCollateralPriceFeed(address(depositedCollateral))).latestRoundData();
 
         uint256 minimumHealthFactor = engine.getMinHealthFactor();
         uint256 userHealthFactor = engine.getHealthFactor(userToLiquidate);
 
         if (userHealthFactor >= minimumHealthFactor) return;
-        if (engine.getCollateralBalanceOfUser(userToLiquidate, address(collateral)) == 0) return;
+        if (engine.getCollateralBalanceOfUser(userToLiquidate, address(depositedCollateral)) == 0) return;
+        if (price == 0) depositedCollateral = _getCollateralFromSeed(collateralSeed + 1);
 
-        uint256 userBalanceOfDSC = engine.getTotalMinted(userToLiquidate);
+        uint256 userBalanceOfDSC = engine.getDSCBalance(userToLiquidate); // 111369762185217934373898708213 | 1.113e29
         if (userBalanceOfDSC == 0) return;
         debtToCover = bound(debtToCover, 1, userBalanceOfDSC);
 
-        uint256 amountCollateral = engine.getTokenAmountFromUsd(address(collateral2), debtToCover * 2e8);
+        uint256 amountCollateral = engine.getTokenAmountFromUsdValue(address(depositedCollateral), debtToCover * 2e8);
         amountCollateral = bound(amountCollateral, 1, MAX_DEPOSIT_SIZE);
 
         vm.startPrank(msg.sender);
-        collateral.mint(msg.sender, amountCollateral);
-        collateral.approve(address(engine), amountCollateral);
-        engine.depositCollateral(address(collateral), amountCollateral);
-        vm.stopPrank();
 
-        mintDSC(debtToCover);
+        depositedCollateral.mint(msg.sender, amountCollateral);
+        depositedCollateral.approve(address(engine), amountCollateral);
+        engine.depositCollateral(address(depositedCollateral), amountCollateral);
 
-        vm.startPrank(msg.sender);
+        (uint256 amountDSCAlreadyMinted, uint256 collateralValueInUsd) = engine.getAccountInformation(msg.sender);
+        engine.getAccountInformation(userToLiquidate);
+        uint256 maxDSCToMint = (collateralValueInUsd / 2) - amountDSCAlreadyMinted;
+
+        if (maxDSCToMint < 0) return;
+        debtToCover = bound(debtToCover, 0, maxDSCToMint);
+        engine.mintDsc(debtToCover);
+
         dsc.approve(msg.sender, debtToCover);
         dsc.approve(address(engine), debtToCover);
-        engine.liquidate(address(collateral), userToLiquidate, debtToCover);
+        engine.liquidate(address(collateralToLiquidate), userToLiquidate, debtToCover);
         vm.stopPrank();
     }
 
     function updateCollateralPrice(uint96 newPrice, uint256 collateralSeed) public {
+        if (newPrice == 0) return;
         int256 newPriceInt = int256(uint256(newPrice));
         ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
 

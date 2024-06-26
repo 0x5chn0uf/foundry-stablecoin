@@ -198,7 +198,7 @@ contract DSCEngine is ReentrancyGuard {
         uint256 startingUserHealthFactor = _healthFactor(user);
         if (startingUserHealthFactor >= MIN_HEALTH_FACTOR) revert DSCEngine__HealthFactorOK();
 
-        uint256 tokenAmountFromDebtCovered = getTokenAmountFromUsd(collateral, debtToCover);
+        uint256 tokenAmountFromDebtCovered = getTokenAmountFromUsdValue(collateral, debtToCover);
         uint256 bonusCollateral = (tokenAmountFromDebtCovered * LIQUIDATION_BONUS) / LIQUIDATION_PRECISION;
 
         uint256 totalCollateralToRedeem = tokenAmountFromDebtCovered;
@@ -214,7 +214,6 @@ contract DSCEngine is ReentrancyGuard {
         if (totalCollateralToRedeem > maxCollateralBalance) totalCollateralToRedeem = maxCollateralBalance;
 
         _redeemCollateral(user, msg.sender, collateral, totalCollateralToRedeem);
-
         _burnDSC(debtToCover, user, msg.sender);
 
         uint256 endingUserHealthFactor = _healthFactor(user);
@@ -288,7 +287,7 @@ contract DSCEngine is ReentrancyGuard {
         }
     }
 
-    function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
+    function getTokenAmountFromUsdValue(address token, uint256 usdAmountInWei) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
         (, int256 price,,,) = priceFeed.stalePriceCheckLatestRoundData();
         if (price == 0) return uint256(type(uint128).max);
@@ -371,7 +370,7 @@ contract DSCEngine is ReentrancyGuard {
         return _getUsdValue(token, amount);
     }
 
-    function getTotalMinted(address user) external view returns (uint256) {
+    function getDSCBalance(address user) external view returns (uint256) {
         return s_DSCMinted[user];
     }
 }
